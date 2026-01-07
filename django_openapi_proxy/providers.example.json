@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Grok (xAI)",
+    "url": "https://api.x.ai/v1/chat/completions",
+    "api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    "model_map": {
+      "gpt-4o-mini": "grok-beta",
+      "gpt-4o": "grok-beta",
+      "gpt-4": "grok-pro"
+    }
+  },
+  {
+    "name": "Cerebras",
+    "url": "https://api.cerebras.ai/v1/chat/completions",
+    "api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    "model_map": {
+      "gpt-4o-mini": "llama3.1-70b",
+      "gpt-4o": "llama3.1-70b",
+      "gpt-3.5-turbo": "llama3.1-8b"
+    }
+  }
+]
