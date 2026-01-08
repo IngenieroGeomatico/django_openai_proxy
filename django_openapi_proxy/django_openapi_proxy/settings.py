@@ -28,13 +28,17 @@ EXAMPLE_PATH = os.path.join(BASE_DIR, 'providers.example.json')
 # Contenido del ejemplo (con claves falsas y comentarios explicativos)
 DEFAULT_PROVIDERS_CONTENT = [
     {
-        "name": "Grok (xAI)",
-        "url": "https://api.x.ai/v1/chat/completions",
+        "name": "Groq",
+        "URL_API":"https://console.groq.com/keys",
+        "URL_models":"https://console.groq.com/docs/models",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
         "api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
         "model_map": {
-            "gpt-4o-mini": "grok-beta",
-            "gpt-4o": "grok-beta",
-            "gpt-4": "grok-pro"
+            "Llama 3.3 70B":"llama-3.3-70b-versatile",
+            "Llama Guard 4 12B":"meta-llama/llama-guard-4-12b",
+            "GPT OSS 120B":"openai/gpt-oss-120b",
+            "GPT OSS 20B":"openai/gpt-oss-20b",
+            "Kimi K2 0905":"moonshotai/kimi-k2-instruct-0905"
         }
     },
     {
@@ -177,7 +181,9 @@ def get_env_settings():
 
 
 # --- Uso en settings.py ---
-SECRET_KEY, PROXY_API_KEY = get_env_settings()
+SECRET_KEY_, PROXY_API_KEY_ = get_env_settings()
+SECRET_KEY = SECRET_KEY_
+PROXY_API_KEY =  PROXY_API_KEY_
 
 
 # SECURITY WARNING: don't run with debug turned on in production!

@@ -1,12 +1,15 @@
 import requests
 import json
 
+from decouple import config
+PROXY_API_KEY = config('PROXY_API_KEY', default=None)
+
 # URL de tu proxy Django (cámbiala si usas otro puerto)
 BASE_URL = "http://localhost:8000/api/v1/chat/completions"
 
 # Tu mensaje de prueba
 payload = {
-    "model": "gpt-4o-mini",  # Este se mapeará automáticamente a grok-4-1-fast-reasoning (o lo que tengas en providers.json)
+    "model": "gpt-4o-mini",  # Este se mapeará automáticamente a groq-4-1-fast-reasoning (o lo que tengas en providers.json)
     "messages": [
         {"role": "system", "content": "Eres un asistente útil y divertido."},
         {"role": "user", "content": "Cuéntame un chiste corto sobre programación"}
@@ -18,10 +21,12 @@ payload = {
 }
 
 headers = {
-    "Content-Type": "application/json"
-    # Si activaste PROXY_API_KEY, añade:
-    # "Authorization": "Bearer tu-clave-secreta"
+    "Content-Type": "application/json",
 }
+
+# El proxy espera el header: Authorization: Bearer <PROXY_API_KEY>
+if PROXY_API_KEY:
+    headers["Authorization"] = f"Bearer {PROXY_API_KEY}"
 
 print("🚀 Enviando petición al proxy...\n")
 
