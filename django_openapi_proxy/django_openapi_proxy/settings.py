@@ -12,14 +12,15 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 import json
+import secrets
 from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
-from decouple import config
-
-
+from decouple import Config, RepositoryEnv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+ENV_PATH = os.path.join(BASE_DIR, '.env')
 
 PROVIDERS_PATH = os.path.join(BASE_DIR, 'providers.json')
 EXAMPLE_PATH = os.path.join(BASE_DIR, 'providers.example.json')
@@ -102,9 +103,82 @@ AI_PROVIDERS = get_providers()
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # Load from environment or .env using python-decouple
-SECRET_KEY = config('SECRET_KEY')
-# Opcional: clave para proteger tu proxy
-PROXY_API_KEY = config('PROXY_API_KEY', default=None)
+
+# --- Creación automática del .env (si no existe) ---
+def create_env_file():
+    """
+    Crea .env si no existe (para uso real).
+    - Genera SECRET_KEY segura si falta.
+    - Añade PROXY_API_KEY=None por defecto.
+    - No sobrescribe si ya existe.
+    """
+    if not os.path.exists(ENV_PATH):
+        secret = secrets.token_urlsafe(50)  # ~ 67 chars base64-url
+        lines = [
+            f"SECRET_KEY={secret}\n",
+            "PROXY_API_KEY=None\n",
+        ]
+        with open(ENV_PATH, 'w', encoding='utf-8') as f:
+            f.writelines(lines)
+        print("✅ .env creado automáticamente.")
+        print("⚠️ RECUERDA: Si vas a desplegar en producción, rota y guarda la SECRET_KEY de forma segura.")
+    else:
+        # Si existe, asegurar claves mínimas sin sobrescribir
+        with open(ENV_PATH, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        updated = False
+        if "SECRET_KEY=" not in content:
+            with open(ENV_PATH, 'a', encoding='utf-8') as f:
+                f.write(f"SECRET_KEY={secrets.token_urlsafe(50)}\n")
+            updated = True
+
+        if "PROXY_API_KEY=" not in content:
+            with open(ENV_PATH, 'a', encoding='utf-8') as f:
+                f.write("PROXY_API_KEY=None\n")
+            updated = True
+
+        if updated:
+            print("🔧 .env actualizado con claves faltantes.")
+        else:
+            print("ℹ️ .env ya contiene las claves necesarias.")
+
+
+# --- Carga segura y validación de variables ---
+def get_env_settings():
+    """
+    Garantiza que .env exista, carga y valida SECRET_KEY y PROXY_API_KEY.
+    Devuelve (SECRET_KEY, PROXY_API_KEY).
+    """
+    # Primero: aseguramos que el .env exista (para el proyecto)
+    create_env_file()
+
+    # Cargamos con python-decouple usando RepositoryEnv directo al archivo .env
+    # (Alternativa a decouple.config, para poder manejar mejor errores/localización)
+    if not os.path.exists(ENV_PATH):
+        raise ImproperlyConfigured(f"No se encontró el archivo .env en: {ENV_PATH}")
+
+    config = Config(RepositoryEnv(ENV_PATH))
+
+    # SECRET_KEY: obligatoria y no vacía
+    try:
+        secret_key = config('SECRET_KEY')
+    except Exception as e:
+        raise ImproperlyConfigured(f"SECRET_KEY no definida en .env: {e}")
+
+    if not secret_key or isinstance(secret_key, str) and secret_key.strip() == "":
+        raise ImproperlyConfigured("SECRET_KEY está vacía en .env.")
+
+    # PROXY_API_KEY: opcional, 'None' se interpreta como None real
+    proxy_api_key_raw = config('PROXY_API_KEY', default='None')
+    proxy_api_key = None if str(proxy_api_key_raw).strip().lower() in ('', 'none', 'null') else proxy_api_key_raw
+
+    return secret_key, proxy_api_key
+
+
+# --- Uso en settings.py ---
+SECRET_KEY, PROXY_API_KEY = get_env_settings()
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
