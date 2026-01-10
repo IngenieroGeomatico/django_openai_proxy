@@ -1,4 +1,5 @@
 import json, logging, requests
+import re
 from itertools import cycle
 from django.conf import settings
 from django.http import JsonResponse, HttpResponseBadRequest, StreamingHttpResponse
@@ -7,16 +8,27 @@ from django.views.decorators.csrf import csrf_exempt
 logger = logging.getLogger(__name__)
 
 # ----------------------------------------------------------------------
-# Manejo de proveedores (moved to helpers)
+# Manejo de proveedores
 # ----------------------------------------------------------------------
 SERVICES = settings.AI_PROVIDERS
 _service_cycle = cycle(SERVICES)          # ciclo infinito de proveedores
 _current_service = next(_service_cycle)   # inicializamos con el primero
 
-def _next_service():
-    """Avanza al siguiente proveedor y registra la selección."""
+def _next_service(body):
+    """Avanza al siguiente proveedor que soporte el modelo solicitado y registra la selección."""
     global _current_service
-    _current_service = next(_service_cycle)
+    model = body.get("model", "")
+    # Si no se especifica modelo, rotamos entre todos los servicios
+    if not model:
+        _current_service = next(_service_cycle)
+        logger.info(f"Balanceando a (sin modelo): {_current_service.get('name')}")
+        return _current_service
+
+    valid_services = [service for service in SERVICES if "model_map" in service and model in service["model_map"]]
+    if not valid_services:
+        # Si no hay proveedores que soporten el modelo, retornamos un error
+        return None
+    _current_service = next((s for s in _service_cycle if s in valid_services), valid_services[0])
     logger.info(f"Balanceando a: {_current_service['name']}")
     return _current_service
 
@@ -36,8 +48,10 @@ def _build_headers(service):
         "Content-Type": "application/json",
     }
 
+
+
 # ----------------------------------------------------------------------
-# Helper para respuestas en streaming
+# Ayudas para respuestas en streaming
 # ----------------------------------------------------------------------
 def _stream_response(service, headers, body):
     """Genera chunks SSE normalizados compatibles con el estilo de OpenAI."""
@@ -85,6 +99,7 @@ def _stream_response(service, headers, body):
             yield f"data: {json.dumps(err)}\n\n".encode()
     return StreamingHttpResponse(generator(), content_type="text/event-stream")
 
+
 # ----------------------------------------------------------------------
 # Vista principal (refactorizada)
 # ----------------------------------------------------------------------
@@ -107,9 +122,17 @@ def ai_proxy(request):
         return HttpResponseBadRequest("JSON inválido")
 
     # Seleccionamos proveedor y preparamos la petición
-    service = _next_service()
+    if "model" in body:
+        service = _next_service(body)
+        if service is None:
+            return JsonResponse({"error": "Modelo no soportado por ninguno de los proveedores"}, status=400)
+    else:
+        service = _next_service({"model": ""})  # Esto se puede personalizar según sea necesario
     body = _map_model(service, body)
     headers = _build_headers(service)
+
+
+    print(service.get("name", "").lower())
 
     # --------------------------------------------------------------
     # Ruta de streaming

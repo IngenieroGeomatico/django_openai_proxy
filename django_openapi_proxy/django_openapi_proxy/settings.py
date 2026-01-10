@@ -34,23 +34,90 @@ DEFAULT_PROVIDERS_CONTENT = [
         "url": "https://api.groq.com/openai/v1/chat/completions",
         "api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
         "model_map": {
+            "_top":"openai/gpt-oss-120b",
+            "_low":"openai/gpt-oss-20b",
+            "Llama 3.1 8B":"llama-3.1-8b-instant",
             "Llama 3.3 70B":"llama-3.3-70b-versatile",
             "Llama Guard 4 12B":"meta-llama/llama-guard-4-12b",
             "GPT OSS 120B":"openai/gpt-oss-120b",
             "GPT OSS 20B":"openai/gpt-oss-20b",
-            "Kimi K2 0905":"moonshotai/kimi-k2-instruct-0905"
+            "Whisper":"openai/whisper-large-v3",
+            "Whisper Large V3 Turbo":"openai/whisper-large-v3-turbo",
+            "Kimi K2 0905":"moonshotai/kimi-k2-instruct-0905",
+            "Safety GPT OSS 20B":"openai/gpt-oss-safeguard-20b",
+            "Qwen3-32B":"qwen/qwen3-32b"
         }
     },
     {
         "name": "Cerebras",
+        "URL_API": "https://cloud.cerebras.ai/platform/org_pv8wc48vp5jd4mctjf2nrdhx/apikeys",
+        "URL_models": "https://cloud.cerebras.ai/platform/org_pv8wc48vp5jd4mctjf2nrdhx/models",
         "url": "https://api.cerebras.ai/v1/chat/completions",
         "api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
         "model_map": {
-            "gpt-4o-mini": "llama3.1-70b",
-            "gpt-4o": "llama3.1-70b",
-            "gpt-3.5-turbo": "llama3.1-8b"
+            "_top":"gpt-oss-120b",
+            "_low":"llama3.1-8b",
+            "Llama 3.3 70B": "llama-3.3-70b",
+            "llama3.1-8b": "llama3.1-8b",
+            "GPT OSS 120B": "gpt-oss-120b",
+            "qwen-3-235b-a22b-instruct-2507": "qwen-3-235b-a22b-instruct-2507",
+            "qwen-3-32b": "qwen-3-32b",
+            "zai-glm-4.6": "zai-glm-4.6",
+            "zai-glm-4.7": "zai-glm-4.7"
+        }
+    },
+    {
+        "name": "Gemini",
+        "URL_API": "https://aistudio.google.com/app/api-keys",
+        "URL_models": "https://ai.google.dev/gemini-api/docs/interactions?hl=es-419&ua=chat#supported-models-agents",
+        "url": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+        "api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+        "model_map": {
+            "_top":"gemini-2.5-flash",
+            "_low":"gemini-2.5-flash-lite",
+            "gemini-2.5-flash":"gemini-2.5-flash",
+            "gemini-2.5-flash-lite":"gemini-2.5-flash-lite",
+            "gemini-robotics-er-1.5-preview":"gemini-robotics-er-1.5-preview"
+        }
+    },
+    {
+        "name": "openRouter",
+        "URL_API": "https://openrouter.ai/settings/keys",
+        "URL_models": "https://openrouter.ai/models",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+        "model_map": {
+            "_top": "openai/gpt-oss-120b:free",
+            "_low": "openai/gpt-oss-20b:free",
+            "molmo-2-8b": "allenai/molmo-2-8b:free",
+            "mimo-v2-flash:free":"xiaomi/mimo-v2-flash:free",
+            "nemotron-3-nano-30b-a3b:free":"nvidia/nemotron-3-nano-30b-a3b:free",
+            "devstral-2512":"mistralai/devstral-2512:free",
+            "tng-r1t-chimera":"tngtech/tng-r1t-chimera:free",
+            "nemotron-nano-12b-v2-vl":"nvidia/nemotron-nano-12b-v2-vl:free",
+            "gpt-oss-120b":"openai/gpt-oss-120b:free",
+            "gpt-oss-20b":"openai/gpt-oss-20b:free",
+            "glm-4.5-air":"z-ai/glm-4.5-air:free",
+            "qwen3-coder":"qwen/qwen3-coder:free",
+            "kimi-k2":"moonshotai/kimi-k2:free",
+            "dolphin-mistral-24b-venice-edition":"cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
+            "gemma-3n-e2b-it":"google/gemma-3n-e2b-it:free",
+            "deepseek-r1t2-chimera":"tngtech/deepseek-r1t2-chimera:free",
+            "deepseek-r1-0528":"deepseek/deepseek-r1-0528:free",
+            "gemma-3n-e4b-it":"google/gemma-3n-e4b-it:free",
+            "qwen3-4b":"qwen/qwen3-4b:free",
+            "gemma-3-27b-it":"google/gemma-3-27b-it:free",
+            "gemma-3-4b-it":"google/gemma-3-4b-it:free",
+            "gemini-2.0-flash-exp":"google/gemini-2.0-flash-exp:free",
+            "Llama 3.3 70B":"meta-llama/llama-3.3-70b-instruct:free",
+            "Llama 3.1 8B": "meta-llama/llama-3.1-405b-instruct:free",
+            "qwen-2.5-vl-7b-instruct":"qwen/qwen-2.5-vl-7b-instruct:free"
         }
     }
+
+
+
+
 ]
 
 def create_example_file():
