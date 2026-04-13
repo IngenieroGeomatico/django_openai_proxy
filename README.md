@@ -28,7 +28,7 @@ Proxy compatible con la API de OpenAI que balancea peticiones entre múltiples p
 - Levantar servidor:
      - python manage.py migrate
      - python manage.py runserver
-     - rellenar .env t providers.json
+     - rellenar .env y providers.json
 - Endpoint principal:
   POST /api/v1/chat/completions
   - Cuerpo compatible con OpenAI (model, messages, stream, etc.)
