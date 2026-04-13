@@ -16,19 +16,19 @@ Proxy compatible con la API de OpenAI que balancea peticiones entre múltiples p
 
 ## Instalación rápida
 1. Clonar:
-   git clone <repo>
-   cd django_openai_proxy
+   - git clone <repo>
+   - cd django_openai_proxy
 2. Entorno virtual:
-   python -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
+   - python -m venv .venv
+   - source .venv/bin/activate
+   - pip install -r requirements.txt
 
 
 ## Uso
 - Levantar servidor:
-  python manage.py migrate
-  python manage.py runserver
-  rellenar .env t providers.json
+     - python manage.py migrate
+     - python manage.py runserver
+     - rellenar .env t providers.json
 - Endpoint principal:
   POST /api/v1/chat/completions
   - Cuerpo compatible con OpenAI (model, messages, stream, etc.)
