@@ -125,15 +125,15 @@ def create_example_file():
     if not os.path.exists(EXAMPLE_PATH):
         with open(EXAMPLE_PATH, 'w', encoding='utf-8') as f:
             json.dump(DEFAULT_PROVIDERS_CONTENT, f, indent=2, ensure_ascii=False)
-        print("✅ providers.example.json creado automáticamente.")
+        print("[OK] providers.example.json creado automáticamente.")
 
 def create_providers_file():
     """Crea providers.json con el ejemplo si no existe (para uso real)"""
     if not os.path.exists(PROVIDERS_PATH):
         with open(PROVIDERS_PATH, 'w', encoding='utf-8') as f:
             json.dump(DEFAULT_PROVIDERS_CONTENT, f, indent=2, ensure_ascii=False)
-        print("✅ providers.json creado automáticamente.")
-        print("⚠️  RECUERDA: Edita providers.json con tus claves reales de API.")
+        print("[OK] providers.json creado automáticamente.")
+        print("[AVISO] RECUERDA: Edita providers.json con tus claves reales de API.")
         print("   No subas este archivo a GitHub (está en .gitignore).")
 
 def get_providers():
@@ -191,8 +191,8 @@ def create_env_file():
         ]
         with open(ENV_PATH, 'w', encoding='utf-8') as f:
             f.writelines(lines)
-        print("✅ .env creado automáticamente.")
-        print("⚠️ RECUERDA: Si vas a desplegar en producción, rota y guarda la SECRET_KEY de forma segura.")
+        print("[OK] .env creado automáticamente.")
+        print("[AVISO] RECUERDA: Si vas a desplegar en producción, rota y guarda la SECRET_KEY de forma segura.")
     else:
         # Si existe, asegurar claves mínimas sin sobrescribir
         with open(ENV_PATH, 'r', encoding='utf-8') as f:
@@ -210,9 +210,9 @@ def create_env_file():
             updated = True
 
         if updated:
-            print("🔧 .env actualizado con claves faltantes.")
+            print("[INFO] .env actualizado con claves faltantes.")
         else:
-            print("ℹ️ .env ya contiene las claves necesarias.")
+            print("[INFO] .env ya contiene las claves necesarias.")
 
 
 # --- Carga segura y validación de variables ---

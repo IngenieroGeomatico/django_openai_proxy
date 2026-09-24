@@ -1,0 +1,63 @@
+{
+  "provider": {
+    "django-proxy": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Django OpenAI Proxy",
+      "options": {
+        "baseURL": "http://127.0.0.1:8000/api/v1",
+        "apiKey": "{env:DJANGO_PROXY_API_KEY}"
+      },
+      "models": {
+        "gpt-oss-120b": {
+          "name": "GPT OSS 120B",
+          "limit": {
+            "context": 128000,
+            "output": 16384
+          }
+        },
+        "gpt-oss-20b": {
+          "name": "GPT OSS 20B",
+          "limit": {
+            "context": 128000,
+            "output": 16384
+          }
+        },
+        "gemini-2.5-flash": {
+          "name": "Gemini 2.5 Flash",
+          "limit": {
+            "context": 1000000,
+            "output": 65536
+          }
+        },
+        "gemini-2.5-flash-lite": {
+          "name": "Gemini 2.5 Flash Lite",
+          "limit": {
+            "context": 1000000,
+            "output": 4096
+          }
+        },
+        "Llama 3.3 70B": {
+          "name": "Llama 3.3 70B",
+          "limit": {
+            "context": 128000,
+            "output": 32768
+          }
+        },
+        "llama3.1-8b": {
+          "name": "llama3.1-8b",
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          }
+        },
+        "Qwen3-32B": {
+          "name": "Qwen3 32B",
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          }
+        }
+      }
+    }
+  }
+}

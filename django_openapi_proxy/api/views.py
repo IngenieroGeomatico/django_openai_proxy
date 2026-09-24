@@ -73,22 +73,28 @@ def _stream_response(service, headers, body):
                         try:
                             chunk = json.loads(payload)
                             # Normalizamos el chunk para que coincida con la respuesta de OpenAI
+                            choices = []
+                            for choice in chunk.get("choices", []):
+                                delta_src = choice.get("delta") or {}
+                                delta = {
+                                    "content": delta_src.get("content", "")
+                                }
+                                if "reasoning_content" in delta_src:
+                                    delta["reasoning_content"] = delta_src["reasoning_content"]
+                                choices.append({
+                                    "index": choice.get("index", 0),
+                                    "delta": delta,
+                                    "finish_reason": choice.get("finish_reason"),
+                                })
                             normalized = {
                                 "id": chunk.get("id", "chatcmpl-proxy"),
                                 "object": "chat.completion.chunk",
                                 "created": chunk.get("created", 1700000000),
                                 "model": body.get("model", "unknown"),
-                                "choices": [
-                                    {
-                                        "index": 0,
-                                        "delta": {
-                                            "content": choice.get("delta", {}).get("content", "")
-                                        },
-                                        "finish_reason": choice.get("finish_reason"),
-                                    }
-                                    for choice in chunk.get("choices", [])
-                                ],
+                                "choices": choices,
                             }
+                            if "usage" in chunk:
+                                normalized["usage"] = chunk["usage"]
                             yield f"data: {json.dumps(normalized)}\n\n".encode()
                         except json.JSONDecodeError:
                             # Si no se puede parsear, reenviamos la línea tal cual (fallback)
@@ -101,8 +107,41 @@ def _stream_response(service, headers, body):
 
 
 # ----------------------------------------------------------------------
-# Vista principal (refactorizada)
+# Vistas (refactorizadas)
 # ----------------------------------------------------------------------
+@csrf_exempt
+def list_models(request):
+    """Devuelve la lista de modelos disponibles en formato compatible con OpenAI."""
+    if request.method != "GET":
+        return HttpResponseBadRequest("Solo GET permitido")
+
+    # Protección opcional mediante clave API
+    if settings.PROXY_API_KEY:
+        auth = request.headers.get("Authorization")
+        if not auth or auth != f"Bearer {settings.PROXY_API_KEY}":
+            return JsonResponse({"error": "Unauthorized"}, status=401)
+
+    seen = set()
+    data = []
+    providers = getattr(settings, "AI_PROVIDERS", SERVICES)
+    for provider in providers:
+        provider_name = provider.get("name", "unknown")
+        model_map = provider.get("model_map", {})
+        for model_id in model_map.keys():
+            if model_id.startswith("_"):
+                continue
+            if model_id not in seen:
+                seen.add(model_id)
+                data.append({
+                    "id": model_id,
+                    "object": "model",
+                    "created": 1700000000,
+                    "owned_by": provider_name,
+                })
+
+    return JsonResponse({"object": "list", "data": data})
+
+
 @csrf_exempt
 def ai_proxy(request):
     """Proxy que reenvía peticiones POST a un proveedor de IA rotativo."""
