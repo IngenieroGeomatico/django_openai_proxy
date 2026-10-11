@@ -237,6 +237,9 @@ def get_env_settings():
     except Exception as e:
         raise ImproperlyConfigured(f"SECRET_KEY no definida en .env: {e}")
 
+    # HF_TOKEN: token de Hugging Face para el proveedor serverless gratuito
+    hf_token = config('HF_TOKEN', default='')
+
     if not secret_key or isinstance(secret_key, str) and secret_key.strip() == "":
         raise ImproperlyConfigured("SECRET_KEY está vacía en .env.")
 
@@ -244,13 +247,14 @@ def get_env_settings():
     proxy_api_key_raw = config('PROXY_API_KEY', default='None')
     proxy_api_key = None if str(proxy_api_key_raw).strip().lower() in ('', 'none', 'null') else proxy_api_key_raw
 
-    return secret_key, proxy_api_key
+    return secret_key, proxy_api_key, hf_token
 
 
 # --- Uso en settings.py ---
-SECRET_KEY_, PROXY_API_KEY_ = get_env_settings()
+SECRET_KEY_, PROXY_API_KEY_, HF_TOKEN_ = get_env_settings()
 SECRET_KEY = SECRET_KEY_
 PROXY_API_KEY =  PROXY_API_KEY_
+HF_TOKEN = HF_TOKEN_
 
 
 # SECURITY WARNING: don't run with debug turned on in production!

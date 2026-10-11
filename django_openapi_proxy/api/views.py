@@ -8,27 +8,62 @@ from django.views.decorators.csrf import csrf_exempt
 logger = logging.getLogger(__name__)
 
 # ----------------------------------------------------------------------
+# Endpoint de descubrimiento de modelos (OpenAI-compatible)
+# ----------------------------------------------------------------------
+import time
+
+def models_list(request):
+    """Devuelve la lista de modelos disponibles en formato OpenAI-compatible."""
+    models = []
+    seen = set()
+    for provider in SERVICES:
+        for model_name in provider.get("model_map", {}):
+            if model_name.startswith("_"):
+                continue
+            if model_name not in seen:
+                seen.add(model_name)
+                models.append({
+                    "id": model_name,
+                    "object": "model",
+                    "created": int(time.time()),
+                    "owned_by": provider["name"],
+                })
+    return JsonResponse({"object": "list", "data": models}, status=200)
+
+
+# ----------------------------------------------------------------------
 # Manejo de proveedores
 # ----------------------------------------------------------------------
 SERVICES = settings.AI_PROVIDERS
 _service_cycle = cycle(SERVICES)          # ciclo infinito de proveedores
 _current_service = next(_service_cycle)   # inicializamos con el primero
 
+def _resolve_api_key(service):
+    """Resuelve la api_key: si empieza con 'env:', la carga desde variables de entorno."""
+    key = service.get('api_key', '')
+    if isinstance(key, str) and key.startswith('env:'):
+        env_var = key[4:]
+        value = os.environ.get(env_var, '')
+        if not value:
+            logger.warning(f"Variable de entorno {env_var} no definida para {service.get('name')}")
+        return value
+    return key
+
+
 def _next_service(body):
     """Avanza al siguiente proveedor que soporte el modelo solicitado y registra la selección."""
     global _current_service
     model = body.get("model", "")
-    # Si no se especifica modelo, rotamos entre todos los servicios
+    # Filtrar proveedores con api_key válida
+    active_services = [s for s in SERVICES if _resolve_api_key(s)]
+    # Si no se especifica modelo, rotamos entre todos los servicios activos
     if not model:
-        _current_service = next(_service_cycle)
-        logger.info(f"Balanceando a (sin modelo): {_current_service.get('name')}")
-        return _current_service
-
-    valid_services = [service for service in SERVICES if "model_map" in service and model in service["model_map"]]
-    if not valid_services:
-        # Si no hay proveedores que soporten el modelo, retornamos un error
+        valid = active_services
+    else:
+        valid = [s for s in active_services if "model_map" in s and model in s["model_map"]]
+    if not valid:
         return None
-    _current_service = next((s for s in _service_cycle if s in valid_services), valid_services[0])
+    _current_service = next((s for s in _service_cycle if s in valid), valid[0])
     logger.info(f"Balanceando a: {_current_service['name']}")
     return _current_service
 
@@ -39,14 +74,26 @@ def _map_model(service, body):
         if mapped:
             logger.info(f"Modelo mapeado: {body['model']} → {mapped}")
             body["model"] = mapped
+            # Si el proveedor usa url_template (ej: Hugging Face), inyecta el modelo en la URL
+            if "url_template" in service:
+                service["url"] = service["url_template"].format(model=mapped)
+                logger.info(f"URL construida: {service['url']}")
     return body
 
 def _build_headers(service):
     """Construye los encabezados HTTP para la petición al proveedor."""
     return {
-        "Authorization": f"Bearer {service['api_key']}",
+        "Authorization": f"Bearer {_resolve_api_key(service)}",
         "Content-Type": "application/json",
     }
+
+
+def _get_service_url(service):
+    """Devuelve la URL final del servicio, resolviendo url_template si existe."""
+    if "url_template" in service:
+        # Si la plantilla ya tiene el modelo inyectado (lo hace _map_model)
+        return service.get("url") or service["url_template"]
+    return service["url"]
 
 
 
@@ -54,20 +101,28 @@ def _build_headers(service):
 # Ayudas para respuestas en streaming
 # ----------------------------------------------------------------------
 def _stream_response(service, headers, body):
-    """Genera chunks SSE normalizados compatibles con el estilo de OpenAI."""
+    """Genera chunks SSE normalizados compatibles con el estilo de OpenAI.
+
+    Hace la petición POST de forma eager (no perezosa) para que un
+    error HTTP (4xx/5xx) se propague al caller y el loop pueda reintentar
+    con otro proveedor.
+    """
+    # Petición eager — si falla (413, etc.) la excepción sale de aquí
+    resp = requests.post(
+        _get_service_url(service), headers=headers, json=body, stream=True, timeout=120
+    )
+    resp.raise_for_status()
+
     def generator():
         try:
-            with requests.post(
-                service["url"], headers=headers, json=body, stream=True, timeout=120
-            ) as resp:
-                resp.raise_for_status()
+            with resp:
                 for line in resp.iter_lines():
                     if not line:
                         continue
                     decoded = line.decode("utf-8")
                     if decoded.startswith("data: "):
-                        payload = decoded[6:]                     # quita el prefijo "data: "
-                        if payload.strip() == "[DONE]":           # señal de finalización
+                        payload = decoded[6:]
+                        if payload.strip() == "[DONE]":
                             yield b"data: [DONE]\n\n"
                             continue
                         try:
@@ -97,12 +152,11 @@ def _stream_response(service, headers, body):
                                 normalized["usage"] = chunk["usage"]
                             yield f"data: {json.dumps(normalized)}\n\n".encode()
                         except json.JSONDecodeError:
-                            # Si no se puede parsear, reenviamos la línea tal cual (fallback)
                             yield line + b"\n"
         except Exception as exc:
-            # En caso de error interno enviamos un chunk de error SSE
             err = {"error": {"message": str(exc), "type": "server_error"}}
             yield f"data: {json.dumps(err)}\n\n".encode()
+
     return StreamingHttpResponse(generator(), content_type="text/event-stream")
 
 
@@ -160,35 +214,34 @@ def ai_proxy(request):
     except json.JSONDecodeError:
         return HttpResponseBadRequest("JSON inválido")
 
-    # Seleccionamos proveedor y preparamos la petición
-    if "model" in body:
-        service = _next_service(body)
-        if service is None:
-            return JsonResponse({"error": "Modelo no soportado por ninguno de los proveedores"}, status=400)
-    else:
-        service = _next_service({"model": ""})  # Esto se puede personalizar según sea necesario
-    body = _map_model(service, body)
-    headers = _build_headers(service)
-
-
-    print(service.get("name", "").lower())
-
     # --------------------------------------------------------------
-    # Ruta de streaming
+    # Reintentar con otro proveedor si falla
     # --------------------------------------------------------------
-    if body.get("stream", False):
-        return _stream_response(service, headers, body)
+    model = body.get("model", "")
 
-    # --------------------------------------------------------------
-    # Ruta normal (sin streaming)
-    # --------------------------------------------------------------
-    try:
-        resp = requests.post(service["url"], headers=headers, json=body, timeout=60)
-        resp.raise_for_status()
-        return JsonResponse(resp.json(), status=resp.status_code)
-    except requests.exceptions.RequestException as exc:
-        logger.error(f"Error con {service['name']}: {exc}")
-        status = getattr(exc.response, "status_code", 500)
-        return JsonResponse(
-            {"error": str(exc), "provider": service["name"]}, status=status
-        )
+    for intento in range(len(SERVICES)):
+        if model:
+            service = _next_service(body)
+            if service is None:
+                continue
+        else:
+            service = next(_service_cycle)
+
+        mapped_body = _map_model(service, dict(body))
+        headers = _build_headers(service)
+
+        service_url = _get_service_url(service)
+        try:
+            if body.get("stream", False):
+                return _stream_response(service, headers, mapped_body)
+
+            resp = requests.post(service_url, headers=headers, json=mapped_body, timeout=60)
+            resp.raise_for_status()
+            return JsonResponse(resp.json(), status=resp.status_code)
+        except requests.exceptions.RequestException as exc:
+            logger.warning(f"Intento {intento+1} falló con {service['name']}: {exc}")
+            continue
+
+    return JsonResponse(
+        {"error": "Todos los proveedores fallaron"}, status=503
+    )
